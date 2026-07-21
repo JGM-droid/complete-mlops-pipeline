@@ -1,6 +1,6 @@
 project:
   name: complete-mlops-pipeline
-  phase: phase-1
+  phase: phase-2
   random_seed: 42
 
 data:
@@ -10,10 +10,10 @@ data:
   target_column: Attrition
 
 split:
-  test_size: TODO_test_size_after_dataset_audit
-  validation_size: TODO_validation_size_after_phase_2
+  test_size: 0.2
+  validation_size: 0.2
   random_state: 42
-  stratify: TODO_true_or_false_after_dataset_audit
+  stratify: true
 
 features:
   include_columns: []  # TODO: define after dataset audit
@@ -24,6 +24,12 @@ features:
     - StandardHours
   categorical_columns: []  # TODO: define after dataset audit
   numeric_columns: []  # TODO: define after dataset audit
+  missingness_simulation:
+    enabled: true
+    fraction: 0.04
+    random_seed: 42
+    strategy: all_eligible
+    columns: []
 
 model:
   algorithm: TODO_select_model_after_phase_2

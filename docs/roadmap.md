@@ -21,8 +21,8 @@ Phase 1 dataset-audit sub-status:
 ## Phase 2: Configuration, validation, and preprocessing
 - Purpose: Implement configuration loader, dataset validation, and preprocessing modules.
 - Principal deliverables: Config parsing, schema and quality checks, preprocessing pipeline, initial unit tests.
-- Acceptance checks: Six preprocessing tests and three dataset-validation tests planned and passing.
-- Current status: Not started.
+- Acceptance checks: Complete. Configuration validation, dataset validation, and preprocessing implementation are in place; six-plus preprocessing tests and three-plus dataset-validation tests are implemented and passing.
+- Current status: Complete.
 
 ## Phase 3: Training and evaluation
 - Purpose: Implement deterministic training and evaluation flow.

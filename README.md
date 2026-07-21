@@ -7,9 +7,9 @@ This repository contains a phase-gated implementation of a tabular machine-learn
 Deliver a reproducible MLOps project that satisfies TripleTen grading requirements for data versioning, configuration management, experiment tracking, testing, CI controls, and drift monitoring.
 
 ## Current project status
-- Current phase: Phase 1 (Repository foundation and dataset audit)
-- Implemented now: scaffolding, Git/DVC initialization, dependency verification, governance docs, config skeleton, dataset audit CLI
-- Planned later phases: preprocessing, training, evaluation, MLflow experiment operations, CI, and drift monitoring
+- Current phase: Phase 2 (Configuration, dataset validation, and preprocessing)
+- Implemented now: scaffolding, Git/DVC initialization, dependency verification, governance docs, dataset audit, configuration loading/validation, dataset validation rules, deterministic feature-only missingness simulation, and preprocessing pipeline assembly
+- Planned later phases: model training, evaluation, MLflow experiment operations, CI, and drift monitoring
 
 ## Architecture summary
 The project follows an architecture-first, phase-gated engineering process. Implementation changes must comply with governing documentation in `docs/` and pass architecture review and implementation review before phase promotion.
@@ -45,7 +45,8 @@ The selected dataset is IBM HR Analytics Employee Attrition.
 - Source filename: `data/raw/WA_Fn-UseC_-HR-Employee-Attrition.csv`
 - Target column: `Attrition`
 - Audit summary: 1,470 rows, 35 total columns (34 excluding target), mixed numeric/categorical data, 0 duplicate rows, and 0 missing values.
-- Assignment implication: the source dataset is fully clean, so deterministic missingness simulation will be introduced in a later phase.
+- Source-data policy: the raw CSV is immutable and is never modified.
+- Assignment implication: because source data is fully clean, deterministic feature-only missingness simulation is applied during preprocessing (never on `Attrition`).
 
 ## Planned DVC workflow
 ```powershell
@@ -72,8 +73,9 @@ python -m mlops_pipeline.train --config configs/train.yaml
 
 ## Planned test command
 ```powershell
-# Planned for a later phase; placeholder tests only in Phase 1
-pytest
+# Phase 2 validation commands
+pytest tests/test_config.py tests/test_preprocess.py tests/test_data_validation.py -v
+pytest tests/ -v
 ```
 
 ## Planned MLflow command
@@ -103,8 +105,8 @@ See `docs/roadmap.md` for phase-by-phase deliverables, acceptance checks, and st
 6. Continue with later phases once Phase 1 is approved.
 
 ## Known Phase 1 limitations
-- No preprocessing, training, evaluation, or model validation logic yet.
+## Known Phase 2 limitations
+- No model training, evaluation metrics, or model-validation logic yet.
 - No MLflow run execution workflow yet.
 - No drift monitoring implementation yet.
 - No GitHub Actions workflow yet.
-- Test modules are placeholders only.
