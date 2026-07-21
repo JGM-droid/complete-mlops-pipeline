@@ -29,6 +29,7 @@ artifacts/
 mlruns/
 reports/*.html
 reports/*.json
+reports/*.csv
 
 # Environment files
 .env

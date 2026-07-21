@@ -33,8 +33,8 @@ Phase 1 dataset-audit sub-status:
 ## Phase 4: MLflow experiment tracking
 - Purpose: Add explicit experiment logging and experiment comparison.
 - Principal deliverables: Parameter, metric, data-version, and model-artifact logging; experiment search and comparison.
-- Acceptance checks: Five committed experiment configurations executed and compared with `mlflow.search_runs`.
-- Current status: Not started.
+- Acceptance checks: Complete. Five controlled experiment configurations are implemented, the five runs were executed locally, MLflow artifacts and tags were recorded, and the comparison utility selects the best eligible run deterministically.
+- Current status: Complete.
 
 ## Phase 5: Drift monitoring
 - Purpose: Implement deterministic data drift monitoring for production data.

@@ -18,6 +18,18 @@
 - Decision: Exclude `EmployeeNumber` (identifier), `EmployeeCount` (constant), `Over18` (constant), and `StandardHours` (constant) through configuration.
 - Consequences: Configuration and future preprocessing logic will enforce deterministic exclusion behavior and reduce leakage/noise risk.
 
+## ADR-011: Use repository-local MLflow tracking for Phase 4
+- Status: Accepted
+- Context: Phase 4 needs local experiment tracking that works in development and grading without a remote server.
+- Decision: Store MLflow runs in the repository-local `mlruns/` directory and opt into the file-based backend when logging or comparing runs.
+- Consequences: Experiment artifacts stay local, are ignored by Git, and remain reproducible from the checked-out repository.
+
+## ADR-012: Rank experiments by F1 and exclude failed gates from best-run selection
+- Status: Accepted
+- Context: The project needs a deterministic, reviewable way to choose the best candidate from several controlled experiments.
+- Decision: Rank runs by `f1_attrition` first, then `balanced_accuracy`, `roc_auc`, `precision_attrition`, `recall_attrition`, `accuracy`, run name, and run ID, while excluding failed quality-gate runs from best-run selection.
+- Consequences: Comparison output is deterministic, the primary metric remains explicit, and a run that fails the gate cannot become the promoted candidate.
+
 ## ADR-003: Use configuration-driven behavior
 - Status: Accepted
 - Context: Reproducibility and grader transparency require externalized settings.

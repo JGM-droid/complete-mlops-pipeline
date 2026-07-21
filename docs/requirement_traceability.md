@@ -5,12 +5,12 @@
 | Git and repository structure | Repository root, `src/`, `tests/`, `docs/`, `configs/`, `data/` | Directory tree, `git status` | In progress | Low |
 | DVC | `.dvc/`, `.dvcignore`, tracked data metadata files, `data/raw/WA_Fn-UseC_-HR-Employee-Attrition.csv.dvc` | `dvc --version`, `dvc status`, DVC metadata, Git-visible `.dvc` pointer | In progress | Medium |
 | YAML configuration | `configs/train.yaml`, `src/mlops_pipeline/config.py` | YAML files with confirmed dataset path, target, exclusion list, deterministic missingness settings, and passing config tests | Complete | Low |
-| MLflow parameters | `src/mlops_pipeline/experiment_runner.py` (future) | MLflow run parameter logs | Not started | Medium |
-| MLflow data version | Future training and experiment modules | Logged DVC hash/tag in MLflow run | Not started | High |
-| MLflow metrics | `src/mlops_pipeline/evaluate.py` + experiment logging (future) | Local evaluation metrics computed; MLflow logging deferred | In progress | Medium |
-| MLflow model artifact | `src/mlops_pipeline/train.py` + MLflow logging (future) | Registered or logged model artifact | Not started | Medium |
-| Five experiment runs | `configs/experiments/` + runner module (future) | Five committed configs and five run records | Not started | High |
-| `mlflow.search_runs` comparison | `src/mlops_pipeline/compare_experiments.py` (future) | Comparison output/report | Not started | Medium |
+| MLflow parameters | `src/mlops_pipeline/experiment_runner.py`, `src/mlops_pipeline/phase4_support.py` | MLflow run parameter logs | Complete | Low |
+| MLflow data version | `src/mlops_pipeline/phase4_support.py` | Logged Git commit tag and safe DVC-status metadata in MLflow run | Complete | Low |
+| MLflow metrics | `src/mlops_pipeline/evaluate.py`, `src/mlops_pipeline/phase4_support.py` | Local evaluation metrics computed and logged to MLflow | Complete | Low |
+| MLflow model artifact | `src/mlops_pipeline/train.py`, `src/mlops_pipeline/phase4_support.py` | Registered sklearn Pipeline artifact in MLflow | Complete | Low |
+| Five experiment runs | `configs/experiments/`, `src/mlops_pipeline/experiment_runner.py` | Five committed configs and five completed local MLflow run records | Complete | Low |
+| `mlflow.search_runs` comparison | `src/mlops_pipeline/compare_experiments.py`, `src/mlops_pipeline/phase4_support.py` | Comparison output/report and deterministic best-run selection | Complete | Low |
 | Six preprocessing unit tests | `tests/test_preprocess.py` | Passing pytest output with substantive preprocessing behaviors | Complete | Low |
 | Three dataset-validation tests | `tests/test_data_validation.py` | Passing pytest output on real dataset plus failure-path checks | Complete | Low |
 | Two model-validation tests | `tests/test_model_validation.py` | Passing pytest output for prediction-shape/value checks and threshold-quality checks | Complete | Low |
@@ -26,7 +26,7 @@
 | Configurable drift threshold | `configs/train.yaml` + monitoring module (future) | Threshold in config and test evidence | In progress | Medium |
 | Exit code 1 | `src/mlops_pipeline/monitor_drift.py` (future) | Terminal exit code on threshold breach | Not started | Medium |
 | Written monitoring analysis | Documentation and reports (future) | Analysis section in report/readme | Not started | Medium |
-| README setup and execution instructions | `README.md` | Reproducible setup plus training and test commands for implemented phases | In progress | Low |
+| README setup and execution instructions | `README.md` | Reproducible setup plus Phase 4 training, experiment, compare, and UI commands | Complete | Low |
 
 ## Dataset audit evidence update
 
@@ -66,4 +66,27 @@
 	- `accuracy`: 0.7721
 - Test evidence:
 	- `pytest tests/test_evaluation.py tests/test_model_validation.py -v` passed.
+	- `pytest tests/ -v` passed.
+
+## Phase 4 implementation evidence update
+
+- MLflow tracking implementation: `src/mlops_pipeline/phase4_support.py` logs parameters, metrics, artifacts, tags, and the sklearn Pipeline model to the local `mlruns/` store.
+- Experiment execution implementation: `src/mlops_pipeline/experiment_runner.py` runs the five controlled experiment YAML files sequentially and writes a machine-readable summary.
+- Comparison implementation: `src/mlops_pipeline/compare_experiments.py` ranks completed runs by `f1_attrition` first and excludes failed quality-gate runs from best-run selection.
+- Experiment configurations:
+	- `configs/experiments/01_logreg_balanced.yaml`
+	- `configs/experiments/02_logreg_stronger_regularization.yaml`
+	- `configs/experiments/03_logreg_no_class_weight.yaml`
+	- `configs/experiments/04_random_forest_balanced.yaml`
+	- `configs/experiments/05_gradient_boosting.yaml`
+- Completed run metrics:
+	- `exp-01-logreg-balanced`: F1 0.4962, Recall 0.7021, Precision 0.3837, Balanced Accuracy 0.7438, ROC AUC 0.8103, Accuracy 0.7721, Quality Gate passed
+	- `exp-02-logreg-stronger-regularization`: F1 0.5075, Recall 0.7234, Precision 0.3908, Balanced Accuracy 0.7544, ROC AUC 0.8083, Accuracy 0.7755, Quality Gate passed
+	- `exp-03-logreg-no-class_weight`: F1 0.4928, Recall 0.3617, Precision 0.7727, Balanced Accuracy 0.6707, ROC AUC 0.8141, Accuracy 0.8810, Quality Gate passed
+	- `exp-04-random-forest-balanced`: F1 0.4615, Recall 0.5106, Precision 0.4211, Balanced Accuracy 0.6885, ROC AUC 0.7735, Accuracy 0.8095, Quality Gate passed
+	- `exp-05-gradient-boosting`: F1 0.2667, Recall 0.1702, Precision 0.6154, Balanced Accuracy 0.5750, ROC AUC 0.7696, Accuracy 0.8503, Quality Gate failed
+- Best eligible run: `exp-02-logreg-stronger-regularization` with `f1_attrition=0.5075`.
+- Selection rule: highest `f1_attrition`, then `balanced_accuracy`, `roc_auc`, `precision_attrition`, `recall_attrition`, `accuracy`, run name, and run ID; failed-gate runs are excluded from selection.
+- Test evidence:
+	- `pytest tests/test_phase4_mlflow.py tests/test_phase4_comparison.py -v` passed.
 	- `pytest tests/ -v` passed.

@@ -28,6 +28,15 @@ def raw_dataset_df(dataset_path: Path) -> pd.DataFrame:
 	return pd.read_csv(dataset_path)
 
 
+@pytest.fixture(scope="session", autouse=True)
+def isolated_mlflow_tracking(tmp_path_factory: pytest.TempPathFactory) -> Path:
+	tracking_dir = tmp_path_factory.mktemp("mlflow-tracking")
+	monkeypatch = pytest.MonkeyPatch()
+	monkeypatch.setenv("MLOPS_PIPELINE_MLFLOW_TRACKING_URI", tracking_dir.as_uri())
+	yield tracking_dir
+	monkeypatch.undo()
+
+
 @pytest.fixture(scope="session")
 def target_column() -> str:
 	return "Attrition"

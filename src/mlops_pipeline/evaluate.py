@@ -104,13 +104,13 @@ def calculate_classification_metrics(
 	return metrics
 
 
-def evaluate_quality_gate(
+def assess_quality_gate(
 	metrics: dict[str, Any],
 	thresholds: dict[str, float],
 	*,
 	primary_metric: str,
 ) -> dict[str, Any]:
-	"""Evaluate configured metric thresholds and raise on failure."""
+	"""Assess configured metric thresholds without raising on failure."""
 	if primary_metric not in metrics:
 		raise EvaluationError(
 			f"Primary metric '{primary_metric}' is missing from computed metrics."
@@ -137,7 +137,7 @@ def evaluate_quality_gate(
 				"minimum_required": float(min_threshold),
 			}
 
-	result = {
+	return {
 		"passed": len(failed) == 0,
 		"primary_metric": primary_metric,
 		"primary_value": float(metrics[primary_metric]),
@@ -145,12 +145,22 @@ def evaluate_quality_gate(
 		"failed_metrics": failed,
 	}
 
-	if failed:
+
+def evaluate_quality_gate(
+	metrics: dict[str, Any],
+	thresholds: dict[str, float],
+	*,
+	primary_metric: str,
+) -> dict[str, Any]:
+	"""Evaluate configured metric thresholds and raise on failure."""
+	result = assess_quality_gate(metrics, thresholds, primary_metric=primary_metric)
+
+	if not result["passed"]:
 		raise QualityGateError(
 			"Quality gate failed for metrics: "
 			+ ", ".join(
 				f"{name}={detail['value']:.4f} < {detail['minimum_required']:.4f}"
-				for name, detail in failed.items()
+				for name, detail in result["failed_metrics"].items()
 			)
 		)
 

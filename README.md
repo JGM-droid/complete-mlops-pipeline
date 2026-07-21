@@ -1,15 +1,15 @@
 # Complete MLOps Pipeline
 
 ## Project overview
-This repository contains a phase-gated implementation of a tabular machine-learning operations workflow for an employee-attrition prediction use case. The current phase includes deterministic baseline training and evaluation.
+This repository contains a phase-gated implementation of a tabular machine-learning operations workflow for an employee-attrition prediction use case. The current phase includes deterministic training, MLflow tracking, and controlled experiment comparison.
 
 ## Assignment objective
 Deliver a reproducible MLOps project that satisfies TripleTen grading requirements for data versioning, configuration management, experiment tracking, testing, CI controls, and drift monitoring.
 
 ## Current project status
-- Current phase: Phase 3 (Training and evaluation)
-- Implemented now: scaffolding, Git/DVC initialization, configuration/validation/preprocessing, deterministic Logistic Regression baseline training, evaluation metrics, and quality-gate enforcement
-- Planned later phases: MLflow experiment operations, CI, and drift monitoring
+- Current phase: Phase 4 (MLflow experiment tracking and controlled model comparison)
+- Implemented now: scaffolding, Git/DVC initialization, configuration/validation/preprocessing, deterministic training, MLflow run tracking, five controlled experiments, and comparison output
+- Planned later phases: drift monitoring and CI
 
 ## Architecture summary
 The project follows an architecture-first, phase-gated engineering process. Implementation changes must comply with governing documentation in `docs/` and pass architecture review and implementation review before phase promotion.
@@ -65,33 +65,46 @@ git add data/raw/WA_Fn-UseC_-HR-Employee-Attrition.csv.dvc .gitignore
 python -m mlops_pipeline.dataset_audit --csv-path data/raw/WA_Fn-UseC_-HR-Employee-Attrition.csv --target-column Attrition --save-json --output-json reports/dataset_audit.json
 ```
 
-## Planned training command
+## Phase 4 training command
 ```powershell
 python -m mlops_pipeline.train --config configs/train.yaml
 ```
 
-## Planned test command
+## Phase 4 experiment command
 ```powershell
-# Phase 2 and Phase 3 validation commands
-pytest tests/test_config.py tests/test_preprocess.py tests/test_data_validation.py -v
-pytest tests/test_evaluation.py tests/test_model_validation.py -v
-pytest tests/ -v
+python -m mlops_pipeline.experiment_runner --config-dir configs/experiments
 ```
 
-## Planned MLflow command
+## Compare runs command
 ```powershell
-# Planned for Phase 4; experiment runner remains deferred
-python -m mlops_pipeline.experiment_runner --config configs/experiments/<experiment>.yaml
+python -m mlops_pipeline.compare_experiments --config configs/train.yaml
+```
+
+## Local MLflow UI
+```powershell
+python -m mlflow ui --backend-store-uri mlruns
+```
+
+## Local MLflow storage
+Local MLflow data is stored in the repository-root `mlruns/` directory. The directory is ignored by Git so runtime tracking data is kept out of commits.
+
+## Test command
+```powershell
+# Phase 2 through Phase 4 validation commands
+pytest tests/test_config.py tests/test_preprocess.py tests/test_data_validation.py -v
+pytest tests/test_evaluation.py tests/test_model_validation.py -v
+pytest tests/test_phase4_mlflow.py tests/test_phase4_comparison.py -v
+pytest tests/ -v
 ```
 
 ## Planned drift-monitoring command
 ```powershell
-# Planned for a later phase; drift monitoring not implemented in Phase 3
+# Planned for a later phase; drift monitoring is not implemented in Phase 4
 python -m mlops_pipeline.monitor_drift --config configs/train.yaml
 ```
 
 ## CI/CD status
-GitHub Actions workflows are planned for later phases. No CI workflow files are implemented in Phase 3.
+GitHub Actions workflows are planned for later phases. No CI workflow files are implemented in Phase 4.
 
 ## Project roadmap
 See `docs/roadmap.md` for phase-by-phase deliverables, acceptance checks, and statuses.
@@ -102,29 +115,10 @@ See `docs/roadmap.md` for phase-by-phase deliverables, acceptance checks, and st
 3. Review governing documentation in `docs/`.
 4. Ensure `data/raw/WA_Fn-UseC_-HR-Employee-Attrition.csv` is present.
 5. Run dataset audit command and inspect JSON report.
-6. Continue with later phases once the current phase acceptance checks are approved.
+6. Run the Phase 4 experiment command and compare the completed runs.
+7. Continue with later phases once the current phase acceptance checks are approved.
 
-## Known Phase 3 limitations
-- No MLflow run execution workflow yet.
+## Known Phase 4 limitations
 - No drift monitoring implementation yet.
 - No GitHub Actions workflow yet.
-
-## Phase 3 baseline model decisions
-- Baseline algorithm: Logistic Regression
-- Class-weighting: `balanced` to mitigate class imbalance (`Attrition=Yes` ~16.1%)
-- Primary metric: `f1_attrition` to balance precision/recall for the minority positive class
-- Secondary metrics: balanced accuracy, ROC AUC, precision/recall for Attrition=Yes, and accuracy
-- Configured primary threshold: `f1_attrition >= 0.45`
-
-## Current observed baseline metrics
-- f1_attrition: 0.4962
-- balanced_accuracy: 0.7438
-- roc_auc: 0.8103
-- precision_attrition: 0.3837
-- recall_attrition: 0.7021
-- accuracy: 0.7721
-
-These values were stable across repeated deterministic runs with the same configuration.
-
-## Artifact ownership note
-MLflow artifact logging remains intentionally deferred to Phase 4 to avoid duplicate artifact ownership paths in earlier phases.
+- Experiment artifacts are recorded locally in `mlruns/` and are intentionally not committed.

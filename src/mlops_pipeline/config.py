@@ -29,6 +29,13 @@ REQUIRED_SECONDARY_METRICS = {
 	"accuracy",
 }
 
+SUPPORTED_PROJECT_PHASES = {"phase-3", "phase-4"}
+SUPPORTED_MODEL_ALGORITHMS = {
+	"gradient_boosting",
+	"logistic_regression",
+	"random_forest",
+}
+
 APPROVED_EXCLUDED_FEATURES = {
 	"EmployeeNumber",
 	"EmployeeCount",
@@ -88,6 +95,14 @@ def validate_config(config: dict[str, Any], config_file_path: str | Path | None 
 	if not isinstance(random_seed, int):
 		raise ConfigError("'project.random_seed' must be an integer.")
 
+	phase = config["project"].get("phase")
+	if not isinstance(phase, str) or not phase.strip():
+		raise ConfigError("'project.phase' must be a non-empty string.")
+	if phase not in SUPPORTED_PROJECT_PHASES:
+		raise ConfigError(
+			"'project.phase' must be one of: " + ", ".join(sorted(SUPPORTED_PROJECT_PHASES))
+		)
+
 	data_section = config["data"]
 	raw_path = data_section.get("raw_path")
 	if not isinstance(raw_path, str) or not raw_path.strip():
@@ -128,10 +143,12 @@ def validate_config(config: dict[str, Any], config_file_path: str | Path | None 
 		)
 
 	_validate_missingness_config(config["features"])
-	_validate_phase3_training_config(config)
+	_validate_training_config(config)
+	_validate_mlflow_config(config["mlflow"])
 
 
-def _validate_phase3_training_config(config: dict[str, Any]) -> None:
+def _validate_training_config(config: dict[str, Any]) -> None:
+	project_phase = config["project"]["phase"]
 	split_section = config["split"]
 	model_section = config["model"]
 	evaluation_section = config["evaluation"]
@@ -149,18 +166,43 @@ def _validate_phase3_training_config(config: dict[str, Any]) -> None:
 		raise ConfigError("'split.stratify' must be a boolean.")
 
 	algorithm = model_section.get("algorithm")
-	if algorithm != "logistic_regression":
+	if algorithm not in SUPPORTED_MODEL_ALGORITHMS:
 		raise ConfigError(
-			"'model.algorithm' must be 'logistic_regression' for Phase 3."
+			"'model.algorithm' must be one of: "
+			+ ", ".join(sorted(SUPPORTED_MODEL_ALGORITHMS))
 		)
 
 	class_weight = model_section.get("class_weight")
-	if class_weight != "balanced":
+	if project_phase == "phase-3" and algorithm != "logistic_regression":
+		raise ConfigError("'model.algorithm' must be 'logistic_regression' for Phase 3.")
+	if project_phase == "phase-3" and class_weight != "balanced":
 		raise ConfigError("'model.class_weight' must be 'balanced' for Phase 3.")
+	if project_phase == "phase-4" and algorithm == "gradient_boosting" and class_weight not in (
+		None,
+		"",
+	):
+		raise ConfigError("'model.class_weight' must be null for gradient boosting experiments.")
+	if project_phase == "phase-4" and algorithm in {"logistic_regression", "random_forest"}:
+		if class_weight in (None, ""):
+			pass
+		elif isinstance(class_weight, str) and class_weight in {"balanced", "balanced_subsample"}:
+			pass
+		elif isinstance(class_weight, dict):
+			pass
+		else:
+			raise ConfigError(
+				"'model.class_weight' must be null, a supported string, or a mapping for Phase 4."
+			)
 
 	max_iter = model_section.get("max_iter")
 	if not isinstance(max_iter, int) or max_iter <= 0:
 		raise ConfigError("'model.max_iter' must be a positive integer.")
+
+	params = model_section.get("params")
+	if params is None:
+		model_section["params"] = {}
+	elif not isinstance(params, dict):
+		raise ConfigError("'model.params' must be a mapping.")
 
 	primary_metric = evaluation_section.get("primary_metric")
 	if primary_metric != "f1_attrition":
@@ -190,6 +232,32 @@ def _validate_phase3_training_config(config: dict[str, Any]) -> None:
 		raise ConfigError(
 			"'evaluation.thresholds.f1_attrition' must be numeric and in the range [0, 1]."
 		)
+
+
+def _validate_mlflow_config(mlflow_section: dict[str, Any]) -> None:
+	"""Validate MLflow configuration for local experiment tracking."""
+	if not isinstance(mlflow_section, dict):
+		raise ConfigError("'mlflow' section must be a mapping/dictionary.")
+
+	tracking_uri = mlflow_section.get("tracking_uri")
+	if not isinstance(tracking_uri, str) or not tracking_uri.strip():
+		raise ConfigError("'mlflow.tracking_uri' must be a non-empty string.")
+	if tracking_uri.startswith("TODO"):
+		raise ConfigError("'mlflow.tracking_uri' must be configured for local tracking.")
+
+	experiment_name = mlflow_section.get("experiment_name")
+	if not isinstance(experiment_name, str) or not experiment_name.strip():
+		raise ConfigError("'mlflow.experiment_name' must be a non-empty string.")
+	if experiment_name.startswith("TODO"):
+		raise ConfigError("'mlflow.experiment_name' must be configured for Phase 4.")
+
+	log_model = mlflow_section.get("log_model")
+	if not isinstance(log_model, bool):
+		raise ConfigError("'mlflow.log_model' must be a boolean.")
+
+	run_name = mlflow_section.get("run_name")
+	if run_name is not None and (not isinstance(run_name, str) or not run_name.strip()):
+		raise ConfigError("'mlflow.run_name' must be a non-empty string when provided.")
 
 
 def _validate_missingness_config(features_section: dict[str, Any]) -> None:

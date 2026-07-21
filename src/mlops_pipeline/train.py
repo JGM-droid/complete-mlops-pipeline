@@ -9,14 +9,18 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
-from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 
 from .config import load_config
 from .data_validation import DOMAIN_RANGE_CHECKS, validate_dataset
-from .evaluate import calculate_classification_metrics, evaluate_quality_gate
+from .evaluate import assess_quality_gate, calculate_classification_metrics
 from .exceptions import EvaluationError, QualityGateError, TrainingError
+from .phase4_support import (
+	build_estimator,
+	collect_lineage_metadata,
+	log_mlflow_training_run,
+)
 from .preprocess import (
 	build_preprocessor,
 	drop_excluded_columns,
@@ -47,11 +51,16 @@ class TrainingResult:
 def train_from_config(config_path: str | Path) -> TrainingResult:
 	"""Train and evaluate a deterministic Logistic Regression baseline from config."""
 	config = load_config(config_path)
-	return train_from_loaded_config(config)
+	return train_from_loaded_config(config, config_path=config_path)
 
 
-def train_from_loaded_config(config: dict[str, Any]) -> TrainingResult:
-	"""Train and evaluate a deterministic Logistic Regression baseline from loaded config."""
+def train_from_loaded_config(
+	config: dict[str, Any],
+	*,
+	config_path: str | Path | None = None,
+	enforce_quality_gate: bool = True,
+) -> TrainingResult:
+	"""Train and evaluate a controlled model from loaded config."""
 	try:
 		data_path = config["data"]["raw_path"]
 		target_column = config["data"]["target_column"]
@@ -63,24 +72,6 @@ def train_from_loaded_config(config: dict[str, Any]) -> TrainingResult:
 		eval_cfg = config["evaluation"]
 	except KeyError as exc:
 		raise TrainingError(f"Required training configuration key is missing: {exc}") from exc
-
-	algorithm = model_cfg.get("algorithm")
-	if algorithm != "logistic_regression":
-		raise TrainingError(
-			"Phase 3 supports only model.algorithm='logistic_regression'. "
-			f"Received: {algorithm}"
-		)
-
-	class_weight = model_cfg.get("class_weight")
-	if class_weight != "balanced":
-		raise TrainingError(
-			"Phase 3 requires model.class_weight='balanced'. "
-			f"Received: {class_weight}"
-		)
-
-	max_iter = model_cfg.get("max_iter")
-	if not isinstance(max_iter, int) or max_iter <= 0:
-		raise TrainingError("model.max_iter must be a positive integer.")
 
 	primary_metric = eval_cfg.get("primary_metric")
 	if not isinstance(primary_metric, str) or not primary_metric:
@@ -141,13 +132,7 @@ def train_from_loaded_config(config: dict[str, Any]) -> TrainingResult:
 
 	numeric_cols, categorical_cols = identify_feature_types(X_train_sim)
 	preprocessor = build_preprocessor(numeric_cols, categorical_cols)
-
-	model = LogisticRegression(
-		class_weight="balanced",
-		max_iter=max_iter,
-		random_state=project_seed,
-		solver="liblinear",
-	)
+	model = build_estimator(model_cfg, random_state=project_seed)
 
 	pipeline = Pipeline(
 		steps=[
@@ -174,13 +159,13 @@ def train_from_loaded_config(config: dict[str, Any]) -> TrainingResult:
 		y_proba_positive=y_proba,
 	)
 
-	quality_gate = evaluate_quality_gate(
+	quality_gate = assess_quality_gate(
 		metrics=metrics,
 		thresholds={k: float(v) for k, v in thresholds.items()},
 		primary_metric=primary_metric,
 	)
-
-	return TrainingResult(
+	lineage_metadata = collect_lineage_metadata(data_path)
+	result = TrainingResult(
 		model_pipeline=pipeline,
 		metrics=metrics,
 		quality_gate=quality_gate,
@@ -199,10 +184,9 @@ def train_from_loaded_config(config: dict[str, Any]) -> TrainingResult:
 			"dataset_path": str(data_path),
 			"target_column": target_column,
 			"excluded_columns": excluded_columns,
-			"model_algorithm": "logistic_regression",
-			"class_weight": "balanced",
-			"max_iter": max_iter,
-			"solver": "liblinear",
+			"model_algorithm": str(model_cfg["algorithm"]),
+			"class_weight": model_cfg.get("class_weight"),
+			"max_iter": model_cfg.get("max_iter"),
 			"split": {
 				"test_size": test_size,
 				"random_state": random_state,
@@ -214,8 +198,37 @@ def train_from_loaded_config(config: dict[str, Any]) -> TrainingResult:
 			},
 			"feature_columns_after_exclusions": X_train_sim.columns.tolist(),
 			"positive_class": "Yes",
+			"lineage": lineage_metadata,
 		},
 	)
+
+	try:
+		run_id = log_mlflow_training_run(
+			config=config,
+			config_path=config_path or data_path,
+			training_result={
+				"metrics": result.metrics,
+				"quality_gate": result.quality_gate,
+				"metadata": result.metadata,
+			},
+			model_pipeline=result.model_pipeline,
+		)
+		result.metadata["mlflow_run_id"] = run_id
+	except TrainingError:
+		raise
+	except Exception as exc:
+		raise TrainingError(f"Failed to log MLflow run: {exc}") from exc
+
+	if enforce_quality_gate and not result.quality_gate["passed"]:
+		raise QualityGateError(
+			"Quality gate failed for metrics: "
+			+ ", ".join(
+				f"{name}={detail['value']:.4f} < {detail['minimum_required']:.4f}"
+				for name, detail in result.quality_gate["failed_metrics"].items()
+			)
+		)
+
+	return result
 
 
 def _format_metrics(metrics: dict[str, Any]) -> str:

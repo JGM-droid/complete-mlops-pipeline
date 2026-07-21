@@ -16,14 +16,14 @@ split:
   stratify: true
 
 features:
-  include_columns: []  # TODO: define after dataset audit
+  include_columns: []
   exclude_columns:
     - EmployeeNumber
     - EmployeeCount
     - Over18
     - StandardHours
-  categorical_columns: []  # TODO: define after dataset audit
-  numeric_columns: []  # TODO: define after dataset audit
+  categorical_columns: []
+  numeric_columns: []
   missingness_simulation:
     enabled: true
     fraction: 0.04
@@ -52,7 +52,7 @@ evaluation:
 mlflow:
   tracking_uri: mlruns
   experiment_name: complete-mlops-pipeline-phase-4
-  run_name: baseline-logreg-balanced
+  run_name: exp-01-logreg-balanced
   log_model: true
 
 monitoring:

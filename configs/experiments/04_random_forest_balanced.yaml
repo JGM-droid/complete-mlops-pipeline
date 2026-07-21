@@ -16,14 +16,14 @@ split:
   stratify: true
 
 features:
-  include_columns: []  # TODO: define after dataset audit
+  include_columns: []
   exclude_columns:
     - EmployeeNumber
     - EmployeeCount
     - Over18
     - StandardHours
-  categorical_columns: []  # TODO: define after dataset audit
-  numeric_columns: []  # TODO: define after dataset audit
+  categorical_columns: []
+  numeric_columns: []
   missingness_simulation:
     enabled: true
     fraction: 0.04
@@ -32,11 +32,13 @@ features:
     columns: []
 
 model:
-  algorithm: logistic_regression
+  algorithm: random_forest
   class_weight: balanced
   max_iter: 3000
   params:
-    C: 1.0
+    n_estimators: 200
+    max_depth: 8
+    min_samples_leaf: 2
 
 evaluation:
   primary_metric: f1_attrition
@@ -52,7 +54,7 @@ evaluation:
 mlflow:
   tracking_uri: mlruns
   experiment_name: complete-mlops-pipeline-phase-4
-  run_name: baseline-logreg-balanced
+  run_name: exp-04-random-forest-balanced
   log_model: true
 
 monitoring:

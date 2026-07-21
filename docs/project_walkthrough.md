@@ -9,9 +9,9 @@ This document is a living engineering reference for the Complete MLOps Pipeline 
 | Business problem | Predict employee attrition so the organization can identify likely departures early and prioritize retention work. |
 | Dataset | IBM HR Analytics Employee Attrition dataset. |
 | Target variable | `Attrition` with values `Yes` and `No`. |
-| Overall pipeline | Dataset audit, configuration validation, dataset validation, preprocessing, deterministic train/test split, model training, evaluation, and quality gate enforcement. |
+| Overall pipeline | Dataset audit, configuration validation, dataset validation, preprocessing, deterministic train/test split, model training, MLflow logging, evaluation, quality gate enforcement, and experiment comparison. |
 
-The project is built as a phase-gated pipeline. Early phases established repository controls and dataset audit readiness. Phase 2 added configuration, validation, and preprocessing. Phase 3 added a deterministic baseline model and evaluation path. Later phases will add experiment tracking, drift monitoring, CI/CD, and final submission hardening.
+The project is built as a phase-gated pipeline. Early phases established repository controls and dataset audit readiness. Phase 2 added configuration, validation, and preprocessing. Phase 3 added a deterministic baseline model and evaluation path. Phase 4 added MLflow experiment tracking, controlled experiment runs, and deterministic run comparison. Later phases will add drift monitoring, CI/CD, and final submission hardening.
 
 ## 2. Dataset Summary
 
@@ -45,22 +45,24 @@ The split happens before preprocessing to avoid leakage. The preprocessing pipel
 
 | Experiment | Model | Important Parameters | F1 | Recall | Precision | Balanced Accuracy | ROC AUC | Accuracy | Quality Gate | Status | Reason for keeping/rejecting |
 |---|---|---|---:|---:|---:|---:|---:|---:|---|---|---|
-| Phase 3 baseline | Logistic Regression | `class_weight=balanced`, `max_iter=3000`, `solver=liblinear`, `random_state=42`, `threshold=0.45` | 0.4962 | 0.7021 | 0.3837 | 0.7438 | 0.8103 | 0.7721 | Pass | Kept | Current best completed model. It is deterministic, passes the configured gate, and provides a solid minority-class recall baseline. |
-| Pending experiment 2 | Pending | Pending | Pending | Pending | Pending | Pending | Pending | Pending | Pending | Pending | Pending |
-| Pending experiment 3 | Pending | Pending | Pending | Pending | Pending | Pending | Pending | Pending | Pending | Pending | Pending |
+| exp-01-logreg-balanced | Logistic Regression | `class_weight=balanced`, `C=1.0`, `max_iter=3000`, `threshold=0.45` | 0.4962 | 0.7021 | 0.3837 | 0.7438 | 0.8103 | 0.7721 | Pass | Kept | Good baseline. Deterministic and gate-compliant. |
+| exp-02-logreg-stronger-regularization | Logistic Regression | `class_weight=balanced`, `C=0.5`, `max_iter=3000`, `threshold=0.45` | 0.5075 | 0.7234 | 0.3908 | 0.7544 | 0.8083 | 0.7755 | Pass | Kept | Current best completed model. Highest F1 among eligible runs. |
+| exp-03-logreg-no-class_weight | Logistic Regression | `class_weight=null`, `C=1.5`, `max_iter=3000`, `threshold=0.45` | 0.4928 | 0.3617 | 0.7727 | 0.6707 | 0.8141 | 0.8810 | Pass | Rejected | Higher precision and ROC AUC than some runs, but lower F1 and much weaker recall than the current best. |
+| exp-04-random-forest-balanced | Random Forest | `class_weight=balanced`, `n_estimators=200`, `max_depth=8`, `min_samples_leaf=2`, `threshold=0.45` | 0.4615 | 0.5106 | 0.4211 | 0.6885 | 0.7735 | 0.8095 | Pass | Rejected | Works as a controlled tree baseline but trails the best Logistic Regression run on F1. |
+| exp-05-gradient-boosting | Gradient Boosting | `n_estimators=150`, `learning_rate=0.05`, `subsample=0.9`, `threshold=0.45` | 0.2667 | 0.1702 | 0.6154 | 0.5750 | 0.7696 | 0.8503 | Fail | Rejected | Fails the quality gate and cannot be selected as best. |
 
 ## 5. Current Best Model
 
 | Item | Summary |
 |---|---|
-| Current best model | Logistic Regression baseline |
-| Why it is best now | It is the only completed experiment so far, it is deterministic across repeated runs, and it satisfies the quality gate. |
+| Current best model | exp-02-logreg-stronger-regularization |
+| Why it is best now | It has the highest `f1_attrition` among eligible runs and still passes the quality gate. |
 | Primary metric | `f1_attrition` |
-| Current score | 0.4962 |
+| Current score | 0.5075 |
 | Quality gate threshold | 0.45 |
 | Quality gate result | Pass |
 
-This section will change as more experiments are completed. Once a stronger model is trained and validated, this summary will be updated to reflect the new best candidate.
+This section will change as more experiments are completed. A later model may replace the current best if it improves the ranking metric while still passing the gate.
 
 ## 6. Tests
 
@@ -71,6 +73,8 @@ This section will change as more experiments are completed. Once a stronger mode
 | Preprocessing | Missing values are simulated deterministically, numeric and categorical imputers work as expected, categorical encoding is safe for unseen categories, and preprocessing does not mutate the original input. |
 | Model Validation | The end-to-end training flow returns valid predictions and probabilities, repeated runs are deterministic, excluded columns stay out of the fitted feature set, and a small valid subset can still train successfully. |
 | Evaluation | Metric calculation returns the expected classification metrics and confusion matrix, serializes cleanly, and the quality gate passes or fails correctly based on thresholds. |
+| MLflow Tracking | The trainer writes run parameters, metrics, tags, artifacts, and the sklearn Pipeline model to the local MLflow store. |
+| Experiment Comparison | The comparison utility reads tracked runs, ranks them deterministically, excludes failed-gate runs from selection, and writes machine-readable summaries. |
 
 ## 7. Engineering Decisions
 
@@ -86,6 +90,12 @@ This section will change as more experiments are completed. Once a stronger mode
 
 - A quality gate exists so the model cannot be promoted unless it meets a minimum metric threshold. This makes the baseline decision explicit and prevents weaker experiments from being treated as acceptable by default.
 
+- Local MLflow tracking is stored in `mlruns/` so experiment data stays inside the repository workspace and does not depend on a remote server. The file store is acceptable here because the project is evaluated locally and the directory is ignored by Git.
+
+- The five experiment set exists to compare small, controlled model changes rather than to run an open-ended search. That keeps the comparison reviewable and lets the experiment table show why one configuration is kept while another is rejected.
+
+- The best-run rule uses `f1_attrition` first and only considers quality-gate-passing runs. That prevents a model with good secondary metrics but poor minority-class balance, or a model that failed the gate, from being promoted.
+
 ## 8. Project Timeline
 
 | Phase | What was built | Current status |
@@ -94,7 +104,7 @@ This section will change as more experiments are completed. Once a stronger mode
 | Phase 1 | Repository foundation, Git/DVC setup, dependency baseline, and dataset audit preparation. | Complete |
 | Phase 2 | Configuration loading, dataset validation, preprocessing, and initial unit tests. | Complete |
 | Phase 3 | Deterministic training, evaluation, model-validation tests, and quality gate. | Complete |
-| Phase 4 | MLflow experiment tracking and comparison. | Pending |
+| Phase 4 | MLflow experiment tracking, controlled experiment runs, and deterministic comparison. | Complete |
 | Phase 5 | Drift monitoring. | Pending |
 | Phase 6 | CI/CD automation. | Pending |
 | Phase 7 | Documentation and grader simulation. | Pending |
