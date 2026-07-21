@@ -15,3 +15,15 @@ class DataValidationError(MLOpsPipelineError):
 
 class PreprocessingError(MLOpsPipelineError):
 	"""Raised when preprocessing setup or transformation fails."""
+
+
+class EvaluationError(MLOpsPipelineError):
+	"""Raised when evaluation input validation or metric computation fails."""
+
+
+class QualityGateError(EvaluationError):
+	"""Raised when a configured quality threshold is not met."""
+
+
+class TrainingError(MLOpsPipelineError):
+	"""Raised when end-to-end training orchestration fails."""

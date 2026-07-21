@@ -1,4 +1,4 @@
-"""Configuration loading and validation utilities for Phase 2."""
+"""Configuration loading and validation utilities."""
 
 from __future__ import annotations
 
@@ -19,6 +19,14 @@ REQUIRED_TOP_LEVEL_SECTIONS = {
 	"mlflow",
 	"monitoring",
 	"outputs",
+}
+
+REQUIRED_SECONDARY_METRICS = {
+	"balanced_accuracy",
+	"roc_auc",
+	"precision_attrition",
+	"recall_attrition",
+	"accuracy",
 }
 
 APPROVED_EXCLUDED_FEATURES = {
@@ -66,7 +74,7 @@ def load_config(config_path: str | Path) -> dict[str, Any]:
 
 
 def validate_config(config: dict[str, Any], config_file_path: str | Path | None = None) -> None:
-	"""Validate full project configuration for Phase 2 requirements."""
+	"""Validate full project configuration requirements."""
 	missing_sections = REQUIRED_TOP_LEVEL_SECTIONS.difference(config.keys())
 	if missing_sections:
 		missing = ", ".join(sorted(missing_sections))
@@ -120,6 +128,68 @@ def validate_config(config: dict[str, Any], config_file_path: str | Path | None 
 		)
 
 	_validate_missingness_config(config["features"])
+	_validate_phase3_training_config(config)
+
+
+def _validate_phase3_training_config(config: dict[str, Any]) -> None:
+	split_section = config["split"]
+	model_section = config["model"]
+	evaluation_section = config["evaluation"]
+
+	test_size = split_section.get("test_size")
+	if not isinstance(test_size, (int, float)) or not 0 < float(test_size) < 1:
+		raise ConfigError("'split.test_size' must be numeric and in the range (0, 1).")
+
+	random_state = split_section.get("random_state")
+	if not isinstance(random_state, int):
+		raise ConfigError("'split.random_state' must be an integer.")
+
+	stratify = split_section.get("stratify")
+	if not isinstance(stratify, bool):
+		raise ConfigError("'split.stratify' must be a boolean.")
+
+	algorithm = model_section.get("algorithm")
+	if algorithm != "logistic_regression":
+		raise ConfigError(
+			"'model.algorithm' must be 'logistic_regression' for Phase 3."
+		)
+
+	class_weight = model_section.get("class_weight")
+	if class_weight != "balanced":
+		raise ConfigError("'model.class_weight' must be 'balanced' for Phase 3.")
+
+	max_iter = model_section.get("max_iter")
+	if not isinstance(max_iter, int) or max_iter <= 0:
+		raise ConfigError("'model.max_iter' must be a positive integer.")
+
+	primary_metric = evaluation_section.get("primary_metric")
+	if primary_metric != "f1_attrition":
+		raise ConfigError("'evaluation.primary_metric' must be 'f1_attrition'.")
+
+	secondary_metrics = evaluation_section.get("secondary_metrics")
+	if not isinstance(secondary_metrics, list) or not all(
+		isinstance(metric, str) for metric in secondary_metrics
+	):
+		raise ConfigError("'evaluation.secondary_metrics' must be a list of strings.")
+
+	missing_metrics = REQUIRED_SECONDARY_METRICS.difference(set(secondary_metrics))
+	if missing_metrics:
+		raise ConfigError(
+			"'evaluation.secondary_metrics' is missing required metrics: "
+			+ ", ".join(sorted(missing_metrics))
+		)
+
+	thresholds = evaluation_section.get("thresholds")
+	if not isinstance(thresholds, dict) or not thresholds:
+		raise ConfigError("'evaluation.thresholds' must be a non-empty mapping.")
+	if "f1_attrition" not in thresholds:
+		raise ConfigError("'evaluation.thresholds' must include 'f1_attrition'.")
+
+	threshold_value = thresholds["f1_attrition"]
+	if not isinstance(threshold_value, (int, float)) or not 0 <= float(threshold_value) <= 1:
+		raise ConfigError(
+			"'evaluation.thresholds.f1_attrition' must be numeric and in the range [0, 1]."
+		)
 
 
 def _validate_missingness_config(features_section: dict[str, Any]) -> None:

@@ -1,6 +1,6 @@
 project:
   name: complete-mlops-pipeline
-  phase: phase-2
+  phase: phase-3
   random_seed: 42
 
 data:
@@ -32,12 +32,21 @@ features:
     columns: []
 
 model:
-  algorithm: TODO_select_model_after_phase_2
-  params: {}  # TODO: add model hyperparameters in future phases
+  algorithm: logistic_regression
+  class_weight: balanced
+  max_iter: 3000
+  params: {}
 
 evaluation:
-  primary_metric: TODO_define_primary_metric
-  thresholds: {}  # TODO: define quality thresholds
+  primary_metric: f1_attrition
+  secondary_metrics:
+    - balanced_accuracy
+    - roc_auc
+    - precision_attrition
+    - recall_attrition
+    - accuracy
+  thresholds:
+    f1_attrition: 0.45
 
 mlflow:
   tracking_uri: TODO_define_tracking_uri

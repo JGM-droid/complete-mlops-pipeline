@@ -27,8 +27,8 @@ Phase 1 dataset-audit sub-status:
 ## Phase 3: Training and evaluation
 - Purpose: Implement deterministic training and evaluation flow.
 - Principal deliverables: Training module, evaluation module, model-validation tests, quality gates.
-- Acceptance checks: Two model-validation tests and evaluation checks planned and passing.
-- Current status: Not started.
+- Acceptance checks: Complete. Deterministic training/evaluation is implemented, model-validation and evaluation tests are passing, and a configurable quality gate is enforced.
+- Current status: Complete.
 
 ## Phase 4: MLflow experiment tracking
 - Purpose: Add explicit experiment logging and experiment comparison.
