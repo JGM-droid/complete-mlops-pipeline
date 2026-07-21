@@ -1,0 +1,47 @@
+# Virtual environment
+.venv/
+
+# Python cache and build artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Data outputs (keep placeholders only)
+data/raw/*
+!data/raw/.gitkeep
+!data/raw/*.dvc
+data/processed/*
+!data/processed/.gitkeep
+data/production/*
+!data/production/.gitkeep
+
+# Project artifacts
+models/
+artifacts/
+mlruns/
+reports/*.html
+reports/*.json
+
+# Environment files
+.env
+.env.*
+
+# IDE settings
+.vscode/
+.idea/
+
+# OS cache files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary local workspace
+code/

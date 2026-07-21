@@ -1,0 +1,51 @@
+project:
+  name: complete-mlops-pipeline
+  phase: phase-1
+  random_seed: 42
+
+data:
+  raw_path: data/raw/WA_Fn-UseC_-HR-Employee-Attrition.csv
+  processed_path: data/processed/TODO_processed_filename.csv
+  production_path: data/production/TODO_production_filename.csv
+  target_column: Attrition
+
+split:
+  test_size: TODO_test_size_after_dataset_audit
+  validation_size: TODO_validation_size_after_phase_2
+  random_state: 42
+  stratify: TODO_true_or_false_after_dataset_audit
+
+features:
+  include_columns: []  # TODO: define after dataset audit
+  exclude_columns:
+    - EmployeeNumber
+    - EmployeeCount
+    - Over18
+    - StandardHours
+  categorical_columns: []  # TODO: define after dataset audit
+  numeric_columns: []  # TODO: define after dataset audit
+
+model:
+  algorithm: TODO_select_model_after_phase_2
+  params: {}  # TODO: add model hyperparameters in future phases
+
+evaluation:
+  primary_metric: TODO_define_primary_metric
+  thresholds: {}  # TODO: define quality thresholds
+
+mlflow:
+  tracking_uri: TODO_define_tracking_uri
+  experiment_name: TODO_define_experiment_name
+  log_model: true
+
+monitoring:
+  enabled: false
+  drift_threshold: TODO_define_drift_threshold
+  report_json_path: reports/drift_summary.json
+  report_html_path: reports/drift_report.html
+
+outputs:
+  model_dir: models/
+  artifacts_dir: artifacts/
+  metrics_path: reports/metrics.json
+  dataset_audit_json_path: reports/dataset_audit.json

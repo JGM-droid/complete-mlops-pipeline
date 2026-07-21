@@ -1,0 +1,23 @@
+# Ignore non-data files and environments for DVC operations
+.venv/
+.git/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.vscode/
+.idea/
+
+# Build and runtime artifacts
+mlruns/
+models/
+artifacts/
+reports/
+*.egg-info/
+
+# OS and temp files
+.DS_Store
+Thumbs.db
+desktop.ini
+*.tmp
+*.log

@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "complete-mlops-pipeline"
+version = "0.1.0"
+description = "Complete MLOps Pipeline capstone foundation"
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+  "pandas==2.3.3",
+  "scikit-learn==1.9.0",
+  "PyYAML==6.0.3",
+  "dvc==3.67.1",
+  "mlflow==3.14.0",
+  "pytest==9.1.1",
+  "evidently==0.7.21"
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
