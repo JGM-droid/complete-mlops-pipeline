@@ -21,8 +21,6 @@ jobs:
   tests:
     name: Test and DVC validation
     runs-on: ubuntu-latest
-    env:
-      MLOPS_PIPELINE_MLFLOW_TRACKING_URI: file://${{ runner.temp }}/mlflow-tracking
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -67,6 +65,8 @@ jobs:
         run: python -m compileall src tests
 
       - name: Run pytest suite
+        env:
+          MLOPS_PIPELINE_MLFLOW_TRACKING_URI: file://${{ runner.temp }}/mlflow-tracking
         run: python -m pytest tests/ -v
 
       - name: Verify tracked raw dataset files are present
@@ -101,8 +101,6 @@ jobs:
     name: Baseline training and gate
     runs-on: ubuntu-latest
     needs: tests
-    env:
-      MLOPS_PIPELINE_MLFLOW_TRACKING_URI: file://${{ runner.temp }}/mlflow-tracking
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -144,6 +142,8 @@ jobs:
           PY
 
       - name: Run baseline training and quality gate
+        env:
+          MLOPS_PIPELINE_MLFLOW_TRACKING_URI: file://${{ runner.temp }}/mlflow-tracking
         run: python -m mlops_pipeline.train --config configs/train.yaml
 
       - name: Verify repository hygiene
