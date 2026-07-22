@@ -36,6 +36,12 @@
 - Decision: Run GitHub Actions with separate test and training jobs, cache pip dependencies, set `MLOPS_PIPELINE_MLFLOW_TRACKING_URI` to a temporary path during CI, and use `dvc status` plus raw-data presence checks as the safe non-destructive DVC validation because the repository has no `dvc.yaml` pipeline file.
 - Consequences: The workflow stays portable, the training job is gated by successful tests, CI output remains isolated from the repository checkout, and DVC validation is aligned with the repository's current tracking layout.
 
+## ADR-014: Use deterministic Evidently drift monitoring with explicit data definitions
+- Status: Accepted
+- Context: Phase 6 requires production-style drift monitoring that is deterministic, reportable, and safe to run in CI without retraining.
+- Decision: Use Evidently 0.7.21 with `evidently.Report`, `evidently.presets.DataDriftPreset`, `evidently.DataDefinition`, and `evidently.Dataset.from_pandas` to compare a deterministic reference batch with stable and deliberately drifted current batches; write a machine-readable JSON summary and an HTML report to `reports/`; and gate the CLI on the configured dataset-drift share threshold without mutating `Attrition` or the raw CSV.
+- Consequences: Monitoring stays reproducible, uses the supported 0.7.21 API surface, keeps target handling explicit, and avoids any automatic retraining or external service dependency.
+
 ## ADR-003: Use configuration-driven behavior
 - Status: Accepted
 - Context: Reproducibility and grader transparency require externalized settings.

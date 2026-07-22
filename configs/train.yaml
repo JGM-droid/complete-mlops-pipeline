@@ -56,10 +56,55 @@ mlflow:
   log_model: true
 
 monitoring:
-  enabled: false
-  drift_threshold: TODO_define_drift_threshold
-  report_json_path: reports/drift_summary.json
-  report_html_path: reports/drift_report.html
+  enabled: true
+  random_seed: 42
+  reference_batch_size: 300
+  production_batch_size: 300
+  dataset_drift_threshold: 0.15
+  feature_drift_threshold: 0.5
+  drift_magnitude:
+    numeric_shift: 8
+    numeric_scale: 0.75
+    categorical_constant_share: 1.0
+  drifted_feature_names:
+    - Age
+    - MonthlyIncome
+    - TotalWorkingYears
+    - JobRole
+    - OverTime
+  per_feature_settings:
+    Age:
+      kind: numeric
+      transform: add
+      magnitude: 8
+      clip_min: 18
+      clip_max: 60
+    MonthlyIncome:
+      kind: numeric
+      transform: scale
+      magnitude: 0.75
+      clip_min: 1000
+      clip_max: 20000
+    TotalWorkingYears:
+      kind: numeric
+      transform: add
+      magnitude: 5
+      clip_min: 0
+      clip_max: 60
+    JobRole:
+      kind: categorical
+      transform: set_constant
+      value: Sales Representative
+    OverTime:
+      kind: categorical
+      transform: set_constant
+      value: "Yes"
+  output_paths:
+    reference_batch_csv: reports/drift_reference.csv
+    stable_batch_csv: reports/drift_stable.csv
+    drifted_batch_csv: reports/drift_drifted.csv
+    summary_json: reports/drift_summary.json
+    html_report: reports/drift_report.html
 
 outputs:
   model_dir: models/

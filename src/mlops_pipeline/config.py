@@ -29,6 +29,27 @@ REQUIRED_SECONDARY_METRICS = {
 	"accuracy",
 }
 
+REQUIRED_MONITORING_OUTPUT_PATHS = {
+	"reference_batch_csv",
+	"stable_batch_csv",
+	"drifted_batch_csv",
+	"summary_json",
+	"html_report",
+}
+
+REQUIRED_MONITORING_DRIFT_MAGNITUDE_KEYS = {
+	"numeric_shift",
+	"numeric_scale",
+	"categorical_constant_share",
+}
+
+SUPPORTED_MONITORING_FEATURE_KINDS = {"categorical", "numeric"}
+SUPPORTED_MONITORING_TRANSFORMS = {
+	"add",
+	"scale",
+	"set_constant",
+}
+
 SUPPORTED_PROJECT_PHASES = {"phase-3", "phase-4"}
 SUPPORTED_MODEL_ALGORITHMS = {
 	"gradient_boosting",
@@ -145,6 +166,7 @@ def validate_config(config: dict[str, Any], config_file_path: str | Path | None 
 	_validate_missingness_config(config["features"])
 	_validate_training_config(config)
 	_validate_mlflow_config(config["mlflow"])
+	_validate_monitoring_config(config["monitoring"])
 
 
 def _validate_training_config(config: dict[str, Any]) -> None:
@@ -258,6 +280,142 @@ def _validate_mlflow_config(mlflow_section: dict[str, Any]) -> None:
 	run_name = mlflow_section.get("run_name")
 	if run_name is not None and (not isinstance(run_name, str) or not run_name.strip()):
 		raise ConfigError("'mlflow.run_name' must be a non-empty string when provided.")
+
+
+def _validate_monitoring_config(monitoring_section: dict[str, Any]) -> None:
+	"""Validate Evidently drift-monitoring configuration."""
+	if not isinstance(monitoring_section, dict):
+		raise ConfigError("'monitoring' section must be a mapping/dictionary.")
+
+	enabled = monitoring_section.get("enabled")
+	if not isinstance(enabled, bool):
+		raise ConfigError("'monitoring.enabled' must be a boolean.")
+	if enabled is False:
+		return
+
+	random_seed = monitoring_section.get("random_seed")
+	if not isinstance(random_seed, int):
+		raise ConfigError("'monitoring.random_seed' must be an integer.")
+
+	reference_batch_size = monitoring_section.get("reference_batch_size")
+	if not isinstance(reference_batch_size, int) or reference_batch_size <= 0:
+		raise ConfigError("'monitoring.reference_batch_size' must be a positive integer.")
+
+	production_batch_size = monitoring_section.get("production_batch_size")
+	if not isinstance(production_batch_size, int) or production_batch_size <= 0:
+		raise ConfigError("'monitoring.production_batch_size' must be a positive integer.")
+
+	if reference_batch_size != production_batch_size:
+		raise ConfigError(
+			"'monitoring.reference_batch_size' and 'monitoring.production_batch_size' must match "
+			"for the deterministic reference/current comparison workflow."
+		)
+
+	dataset_drift_threshold = monitoring_section.get("dataset_drift_threshold")
+	if not isinstance(dataset_drift_threshold, (int, float)) or not 0 <= float(dataset_drift_threshold) <= 1:
+		raise ConfigError(
+			"'monitoring.dataset_drift_threshold' must be numeric and in the range [0, 1]."
+		)
+
+	feature_drift_threshold = monitoring_section.get("feature_drift_threshold")
+	if not isinstance(feature_drift_threshold, (int, float)) or not 0 <= float(feature_drift_threshold) <= 1:
+		raise ConfigError(
+			"'monitoring.feature_drift_threshold' must be numeric and in the range [0, 1]."
+		)
+
+	drifted_feature_names = monitoring_section.get("drifted_feature_names")
+	if not isinstance(drifted_feature_names, list) or not drifted_feature_names:
+		raise ConfigError("'monitoring.drifted_feature_names' must be a non-empty list of strings.")
+	if not all(isinstance(item, str) and item.strip() for item in drifted_feature_names):
+		raise ConfigError("'monitoring.drifted_feature_names' must contain only non-empty strings.")
+	if len(set(drifted_feature_names)) != len(drifted_feature_names):
+		raise ConfigError("'monitoring.drifted_feature_names' must not contain duplicates.")
+
+	drift_magnitude = monitoring_section.get("drift_magnitude")
+	if not isinstance(drift_magnitude, dict):
+		raise ConfigError("'monitoring.drift_magnitude' must be a mapping/dictionary.")
+	missing_magnitude_keys = REQUIRED_MONITORING_DRIFT_MAGNITUDE_KEYS.difference(drift_magnitude.keys())
+	if missing_magnitude_keys:
+		missing = ", ".join(sorted(missing_magnitude_keys))
+		raise ConfigError(
+			"'monitoring.drift_magnitude' is missing required keys: " f"{missing}"
+		)
+	for key in REQUIRED_MONITORING_DRIFT_MAGNITUDE_KEYS:
+		value = drift_magnitude.get(key)
+		if not isinstance(value, (int, float)):
+			raise ConfigError(f"'monitoring.drift_magnitude.{key}' must be numeric.")
+		if key == "categorical_constant_share" and not 0 < float(value) <= 1:
+			raise ConfigError(
+				"'monitoring.drift_magnitude.categorical_constant_share' must be in the range (0, 1]."
+			)
+		if key in {"numeric_shift", "numeric_scale"} and float(value) <= 0:
+			raise ConfigError(f"'monitoring.drift_magnitude.{key}' must be greater than 0.")
+
+	per_feature_settings = monitoring_section.get("per_feature_settings")
+	if not isinstance(per_feature_settings, dict) or not per_feature_settings:
+		raise ConfigError("'monitoring.per_feature_settings' must be a non-empty mapping.")
+	if set(per_feature_settings.keys()) != set(drifted_feature_names):
+		configured = ", ".join(sorted(per_feature_settings.keys()))
+		required = ", ".join(sorted(drifted_feature_names))
+		raise ConfigError(
+			"'monitoring.per_feature_settings' must define exactly the listed drifted features. "
+			f"Configured: {configured}; required: {required}"
+		)
+
+	for feature_name, feature_settings in per_feature_settings.items():
+		_validate_monitoring_feature_settings(feature_name, feature_settings)
+
+	output_paths = monitoring_section.get("output_paths")
+	if not isinstance(output_paths, dict):
+		raise ConfigError("'monitoring.output_paths' must be a mapping/dictionary.")
+	missing_output_paths = REQUIRED_MONITORING_OUTPUT_PATHS.difference(output_paths.keys())
+	if missing_output_paths:
+		missing = ", ".join(sorted(missing_output_paths))
+		raise ConfigError(
+			"'monitoring.output_paths' is missing required keys: " f"{missing}"
+		)
+	for key in REQUIRED_MONITORING_OUTPUT_PATHS:
+		value = output_paths.get(key)
+		if not isinstance(value, str) or not value.strip():
+			raise ConfigError(f"'monitoring.output_paths.{key}' must be a non-empty string.")
+
+
+def _validate_monitoring_feature_settings(feature_name: str, feature_settings: Any) -> None:
+	if not isinstance(feature_settings, dict):
+		raise ConfigError(f"Monitoring settings for '{feature_name}' must be a mapping/dictionary.")
+
+	kind = feature_settings.get("kind")
+	if kind not in SUPPORTED_MONITORING_FEATURE_KINDS:
+		raise ConfigError(
+			f"Monitoring settings for '{feature_name}' must set 'kind' to one of: "
+			+ ", ".join(sorted(SUPPORTED_MONITORING_FEATURE_KINDS))
+		)
+
+	transform = feature_settings.get("transform")
+	if transform not in SUPPORTED_MONITORING_TRANSFORMS:
+		raise ConfigError(
+			f"Monitoring settings for '{feature_name}' must set 'transform' to one of: "
+			+ ", ".join(sorted(SUPPORTED_MONITORING_TRANSFORMS))
+		)
+
+	if kind == "numeric":
+		magnitude = feature_settings.get("magnitude")
+		if not isinstance(magnitude, (int, float)):
+			raise ConfigError(f"Numeric monitoring settings for '{feature_name}' must define a numeric 'magnitude'.")
+		if transform not in {"add", "scale"}:
+			raise ConfigError(
+				f"Numeric monitoring settings for '{feature_name}' must use the 'add' or 'scale' transform."
+			)
+	elif kind == "categorical":
+		value = feature_settings.get("value")
+		if not isinstance(value, str) or not value.strip():
+			raise ConfigError(
+				f"Categorical monitoring settings for '{feature_name}' must define a non-empty 'value'."
+			)
+		if transform != "set_constant":
+			raise ConfigError(
+				f"Categorical monitoring settings for '{feature_name}' must use the 'set_constant' transform."
+			)
 
 
 def _validate_missingness_config(features_section: dict[str, Any]) -> None:

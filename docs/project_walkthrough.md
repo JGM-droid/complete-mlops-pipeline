@@ -9,9 +9,9 @@ This document is a living engineering reference for the Complete MLOps Pipeline 
 | Business problem | Predict employee attrition so the organization can identify likely departures early and prioritize retention work. |
 | Dataset | IBM HR Analytics Employee Attrition dataset. |
 | Target variable | `Attrition` with values `Yes` and `No`. |
-| Overall pipeline | Dataset audit, configuration validation, dataset validation, preprocessing, deterministic train/test split, model training, MLflow logging, evaluation, quality gate enforcement, experiment comparison, and CI validation. |
+| Overall pipeline | Dataset audit, configuration validation, dataset validation, preprocessing, deterministic train/test split, model training, MLflow logging, evaluation, quality gate enforcement, experiment comparison, drift monitoring, and CI validation. |
 
-The project is built as a phase-gated pipeline. Early phases established repository controls and dataset audit readiness. Phase 2 added configuration, validation, and preprocessing. Phase 3 added a deterministic baseline model and evaluation path. Phase 4 added MLflow experiment tracking, controlled experiment runs, and deterministic run comparison. Phase 5 adds GitHub Actions CI/CD validation. Later phases will add drift monitoring and final submission hardening.
+The project is built as a phase-gated pipeline. Early phases established repository controls and dataset audit readiness. Phase 2 added configuration, validation, and preprocessing. Phase 3 added a deterministic baseline model and evaluation path. Phase 4 added MLflow experiment tracking, controlled experiment runs, and deterministic run comparison. Phase 5 added GitHub Actions CI/CD validation. Phase 6 adds deterministic drift monitoring with Evidently. Later phases will add final submission hardening.
 
 ## 2. Dataset Summary
 
@@ -72,8 +72,9 @@ This section will change as more experiments are completed. A later model may re
 | Triggers | Pushes to `main`, pull requests targeting `main`, and manual workflow dispatch. |
 | Test job | Checks out the repository, sets up Python 3.11, installs dependencies, prints dependency versions, runs `compileall`, runs the full `pytest` suite, verifies tracked raw-data files, runs `dvc status`, and checks repository hygiene. |
 | Training job | Depends on the test job, repeats environment setup, then runs `python -m mlops_pipeline.train --config configs/train.yaml` with isolated MLflow tracking and checks repository hygiene again. |
-| Merge blockers | Compile failure, test failure, DVC validation failure, baseline training failure, quality-gate failure, or unexpected repository mutations. |
-| Remaining unfinished after this phase | Drift monitoring and later submission hardening. GitHub-hosted CI evidence is still pending until the workflow runs on Actions. |
+| Monitoring job | Depends on the training job, restores the DVC-tracked raw dataset, runs the stable drift check, then runs the deliberate drifted gate check and verifies the nonzero exit without failing the workflow. |
+| Merge blockers | Compile failure, test failure, DVC validation failure, baseline training failure, drift-monitoring gate failure, or unexpected repository mutations. |
+| Remaining unfinished after this phase | Later submission hardening. GitHub-hosted CI evidence is still pending until the workflow runs on Actions. |
 
 The workflow is intentionally conservative. It validates the repository without requiring remote credentials, uses the committed raw CSV and `.dvc` pointer, and keeps MLflow tracking in the job's temporary filesystem so CI does not depend on repository-local historical runs.
 
@@ -89,6 +90,7 @@ The workflow is intentionally conservative. It validates the repository without 
 | MLflow Tracking | The trainer writes run parameters, metrics, tags, artifacts, and the sklearn Pipeline model to the local MLflow store. |
 | Experiment Comparison | The comparison utility reads tracked runs, ranks them deterministically, excludes failed-gate runs from selection, and writes machine-readable summaries. |
 | CI Behavior | The training CLI exits non-zero when the configured quality gate is impossible, and CI-specific MLflow tracking resolution honors the isolated environment override. |
+| Drift Monitoring | The stable batch exits successfully, the deliberately drifted batch fails the configured drift gate, the raw CSV remains byte-for-byte unchanged, and the generated JSON/HTML reports are produced deterministically. |
 
 ## 8. Engineering Decisions
 
@@ -110,6 +112,10 @@ The workflow is intentionally conservative. It validates the repository without 
 
 - The best-run rule uses `f1_attrition` first and only considers quality-gate-passing runs. That prevents a model with good secondary metrics but poor minority-class balance, or a model that failed the gate, from being promoted.
 
+- Drift monitoring uses a deterministic reference batch plus stable and drifted current batches so that the same seed produces the same reports every time. The stable batch is a row-order permutation of the reference batch, while the drifted batch mutates only feature columns and never `Attrition`.
+
+- The Evidently 0.7.21 API is used through `Report`, `DataDriftPreset`, `DataDefinition`, and `Dataset.from_pandas`. Explicit column typing prevents the HR dataset's string-valued columns from being treated as free-form text.
+
 ## 9. Project Timeline
 
 | Phase | What was built | Current status |
@@ -120,6 +126,6 @@ The workflow is intentionally conservative. It validates the repository without 
 | Phase 3 | Deterministic training, evaluation, model-validation tests, and quality gate. | Complete |
 | Phase 4 | MLflow experiment tracking, controlled experiment runs, and deterministic comparison. | Complete |
 | Phase 5 | CI/CD automation. | Complete locally; GitHub-hosted evidence pending |
-| Phase 6 | Drift monitoring. | Pending |
+| Phase 6 | Drift monitoring. | Complete locally; GitHub-hosted evidence pending |
 | Phase 7 | Documentation and grader simulation. | Pending |
 | Phase 8 | Final audit and submission. | Pending |

@@ -7,9 +7,9 @@ This repository contains a phase-gated implementation of a tabular machine-learn
 Deliver a reproducible MLOps project that satisfies TripleTen grading requirements for data versioning, configuration management, experiment tracking, testing, CI controls, and drift monitoring.
 
 ## Current project status
-- Current phase: Phase 5 (CI/CD validation with GitHub Actions)
-- Implemented now: scaffolding, Git/DVC initialization, configuration/validation/preprocessing, deterministic training, MLflow run tracking, five controlled experiments, comparison output, and a production-style GitHub Actions CI workflow
-- Planned later phases: drift monitoring and final submission hardening
+- Current phase: Phase 6 (deterministic drift monitoring)
+- Implemented now: scaffolding, Git/DVC initialization, configuration/validation/preprocessing, deterministic training, MLflow run tracking, five controlled experiments, comparison output, production-style GitHub Actions CI, deterministic drift batch generation, and Evidently-based drift monitoring
+- Planned later phases: final submission hardening
 
 ## Architecture summary
 The project follows an architecture-first, phase-gated engineering process. Implementation changes must comply with governing documentation in `docs/` and pass architecture review and implementation review before phase promotion.
@@ -99,6 +99,8 @@ CI performs the following checks:
 - verifies the tracked raw CSV and its `.dvc` pointer are present
 - runs `python -m dvc status`
 - runs `python -m mlops_pipeline.train --config configs/train.yaml`
+- generates deterministic drift batches and runs `python -m mlops_pipeline.monitor_drift --config configs/train.yaml --current-batch stable`
+- runs the deliberate drift gate path with `python -m mlops_pipeline.monitor_drift --config configs/train.yaml --current-batch drifted` and verifies the nonzero exit status without failing the workflow
 - checks repository hygiene with `git status --short` and a non-destructive untracked-file check
 
 Local equivalents:
@@ -130,16 +132,44 @@ pytest tests/test_phase5_ci.py -v
 pytest tests/ -v
 ```
 
-## Planned drift-monitoring command
+## Phase 6 drift monitoring
+Drift monitoring compares a current batch to a deterministic reference batch using Evidently 0.7.21.
+
+What drift means here:
+- drift means the feature distribution in the current batch moved far enough from the reference batch to exceed the configured dataset-drift share threshold
+- drift does not automatically mean model failure; it is a signal to review data quality, feature stability, and downstream model impact
+
+How the batches are built:
+- the reference batch is a deterministic sample from the canonical IBM HR CSV
+- the stable current batch is a deterministic row-order permutation of that reference batch
+- the drifted current batch starts from the stable batch and mutates only configured feature columns, never `Attrition`
+
+Commands:
 ```powershell
-# Planned for a later phase; drift monitoring is not implemented in Phase 4
-python -m mlops_pipeline.monitor_drift --config configs/train.yaml
+python -m mlops_pipeline.monitor_drift --config configs/train.yaml --current-batch stable
+python -m mlops_pipeline.monitor_drift --config configs/train.yaml --current-batch drifted
 ```
+
+Outputs:
+- `reports/drift_reference.csv`
+- `reports/drift_stable.csv`
+- `reports/drift_drifted.csv`
+- `reports/drift_summary.json`
+- `reports/drift_report.html`
+
+Threshold and rationale:
+- `monitoring.dataset_drift_threshold` is set to `0.15`
+- `monitoring.feature_drift_threshold` is set to `0.5`
+- the configured numeric and categorical shifts are intentionally strong enough to make the drifted batch fail while the stable batch remains below the gate
+
+Demonstration result:
+- stable batch: exits `0`, `gate_status = passed`
+- drifted batch: exits `1`, `gate_status = failed`
 
 ## CI/CD status
 GitHub Actions CI is implemented in [`.github/workflows/ci.yml`](.github/workflows/ci.yml). It validates the repository on pushes to `main`, pull requests to `main`, and manual dispatch.
 
-The workflow blocks merge readiness on compile, test, DVC, baseline training, and hygiene failures. GitHub-hosted execution still needs a pushed run for remote evidence, so the workflow is locally validated but not claimed green on GitHub yet.
+The workflow blocks merge readiness on compile, test, DVC, baseline training, drift-monitoring gate, and hygiene failures. GitHub-hosted execution still needs a pushed run for remote evidence, so the workflow is locally validated but not claimed green on GitHub yet.
 
 ## Project roadmap
 See `docs/roadmap.md` for phase-by-phase deliverables, acceptance checks, and statuses.
@@ -154,7 +184,7 @@ See `docs/roadmap.md` for phase-by-phase deliverables, acceptance checks, and st
 7. Run the CI checks locally with `python -m compileall src tests`, `python -m pytest tests/ -v`, `python -m mlops_pipeline.train --config configs/train.yaml`, and `python -m dvc status`.
 8. Continue with later phases once the current phase acceptance checks are approved.
 
-## Known Phase 5 limitations
-- No drift monitoring implementation yet.
+## Known Phase 6 limitations
 - GitHub-hosted CI evidence is still pending because the workflow has not been pushed and observed in Actions yet.
+- Drift monitoring is intentionally conservative and only validates the configured batch comparison path; it does not trigger retraining automatically.
 - Experiment artifacts are recorded locally in `mlruns/` and are intentionally not committed.

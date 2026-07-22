@@ -46,7 +46,7 @@ Phase 1 dataset-audit sub-status:
 - Purpose: Implement deterministic data drift monitoring for production data.
 - Principal deliverables: Drift summary JSON, HTML report, configurable threshold, deterministic failure behavior.
 - Acceptance checks: Monitoring exits with status code 1 on configured drift breach.
-- Current status: Not started.
+- Current status: Complete locally; GitHub-hosted evidence pending.
 
 ## Phase 7: Documentation and grader simulation
 - Purpose: Finalize operator-facing and grader-facing execution guidance.
