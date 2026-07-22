@@ -16,7 +16,7 @@ from evidently.presets import DataDriftPreset
 from .config import load_config
 from .data_validation import DataValidationError, validate_target_column
 from .drift_batches import MonitoringContext, generate_monitoring_batches
-from .exceptions import ConfigError, PreprocessingError
+from .exceptions import ConfigError, MLOpsPipelineError, PreprocessingError
 from .preprocess import load_dataframe
 
 
@@ -46,6 +46,8 @@ def run_monitoring_from_config(
 	current_batch: str = "stable",
 ) -> DriftMonitoringResult:
 	"""Generate deterministic batches and evaluate drift for the chosen current batch."""
+	if current_batch not in {"stable", "drifted"}:
+		raise MLOpsPipelineError("current_batch must be exactly 'stable' or 'drifted'.")
 	config = load_config(config_path)
 	batches = generate_monitoring_batches(config, config_path=config_path, persist=True)
 	current_path = batches.stable_path if current_batch == "stable" else batches.drifted_path

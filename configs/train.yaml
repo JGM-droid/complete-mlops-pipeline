@@ -1,6 +1,6 @@
 project:
   name: complete-mlops-pipeline
-  phase: phase-4
+  phase: phase-6
   random_seed: 42
 
 data:
@@ -51,7 +51,7 @@ evaluation:
 
 mlflow:
   tracking_uri: mlruns
-  experiment_name: complete-mlops-pipeline-phase-4
+  experiment_name: complete-mlops-pipeline-phase-6
   run_name: baseline-logreg-balanced
   log_model: true
 

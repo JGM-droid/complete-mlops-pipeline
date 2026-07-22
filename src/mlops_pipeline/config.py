@@ -50,7 +50,7 @@ SUPPORTED_MONITORING_TRANSFORMS = {
 	"set_constant",
 }
 
-SUPPORTED_PROJECT_PHASES = {"phase-3", "phase-4"}
+SUPPORTED_PROJECT_PHASES = {"phase-3", "phase-4", "phase-6"}
 SUPPORTED_MODEL_ALGORITHMS = {
 	"gradient_boosting",
 	"logistic_regression",

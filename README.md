@@ -169,7 +169,10 @@ Demonstration result:
 ## CI/CD status
 GitHub Actions CI is implemented in [`.github/workflows/ci.yml`](.github/workflows/ci.yml). It validates the repository on pushes to `main`, pull requests to `main`, and manual dispatch.
 
-The workflow blocks merge readiness on compile, test, DVC, baseline training, drift-monitoring gate, and hygiene failures. GitHub-hosted execution still needs a pushed run for remote evidence, so the workflow is locally validated but not claimed green on GitHub yet.
+The workflow blocks merge readiness on compile, test, DVC, baseline training, drift-monitoring gate, and hygiene failures. GitHub Actions run #29960096801 completed successfully, and all three jobs passed:
+- Test and DVC validation
+- Baseline training and gate
+- Drift monitoring gate
 
 ## Project roadmap
 See `docs/roadmap.md` for phase-by-phase deliverables, acceptance checks, and statuses.

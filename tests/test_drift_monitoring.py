@@ -13,7 +13,7 @@ from mlops_pipeline import monitor_drift
 from mlops_pipeline.config import ConfigError, load_config
 from mlops_pipeline.data_validation import DataValidationError
 from mlops_pipeline.drift_batches import generate_monitoring_batches
-from mlops_pipeline.exceptions import PreprocessingError
+from mlops_pipeline.exceptions import MLOpsPipelineError, PreprocessingError
 
 
 def _deep_update(target: dict, overrides: dict) -> dict:
@@ -186,6 +186,13 @@ def test_cli_returns_expected_success_and_failure_exit_codes(
 		lambda: monitor_drift.argparse.Namespace(config=str(temp_config), current_batch="drifted"),
 	)
 	assert monitor_drift.main() == 1
+
+
+def test_invalid_current_batch_value_is_rejected(config_path: Path, tmp_path: Path) -> None:
+	temp_config = _write_monitoring_config(config_path, tmp_path)
+
+	with pytest.raises(MLOpsPipelineError, match="stable' or 'drifted"):
+		monitor_drift.run_monitoring_from_config(temp_config, current_batch="paused")
 
 
 def test_raw_dvc_dataset_remains_byte_for_byte_unchanged(
