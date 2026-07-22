@@ -36,16 +36,16 @@ Phase 1 dataset-audit sub-status:
 - Acceptance checks: Complete. Five controlled experiment configurations are implemented, the five runs were executed locally, MLflow artifacts and tags were recorded, and the comparison utility selects the best eligible run deterministically.
 - Current status: Complete.
 
-## Phase 5: Drift monitoring
+## Phase 5: CI/CD
+- Purpose: Implement automated quality and training workflow controls.
+- Principal deliverables: GitHub Actions triggers, separate test and training jobs, explicit dependency between jobs.
+- Acceptance checks: Complete locally. The workflow runs on pushes to `main`, pull requests targeting `main`, and manual dispatch; it installs dependencies, validates compilation and tests, runs the baseline training command, performs non-destructive DVC checks, and verifies repository hygiene.
+- Current status: Complete locally; GitHub-hosted run evidence still pending.
+
+## Phase 6: Drift monitoring
 - Purpose: Implement deterministic data drift monitoring for production data.
 - Principal deliverables: Drift summary JSON, HTML report, configurable threshold, deterministic failure behavior.
 - Acceptance checks: Monitoring exits with status code 1 on configured drift breach.
-- Current status: Not started.
-
-## Phase 6: CI/CD
-- Purpose: Implement automated quality and training workflow controls.
-- Principal deliverables: GitHub Actions triggers, separate test and training jobs, explicit dependency between jobs.
-- Acceptance checks: Green pipeline with training gated by test success and quality checks.
 - Current status: Not started.
 
 ## Phase 7: Documentation and grader simulation

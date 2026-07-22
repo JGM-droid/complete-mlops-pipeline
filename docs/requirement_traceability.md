@@ -15,9 +15,9 @@
 | Three dataset-validation tests | `tests/test_data_validation.py` | Passing pytest output on real dataset plus failure-path checks | Complete | Low |
 | Two model-validation tests | `tests/test_model_validation.py` | Passing pytest output for prediction-shape/value checks and threshold-quality checks | Complete | Low |
 | pytest root command | Project root + `pyproject.toml` | `pytest tests/ -v` execution from root | Complete | Low |
-| GitHub Actions triggers | Future workflow files in `.github/workflows/` | Workflow YAML and run history | Not started | Medium |
-| Test and training jobs | Future CI workflows | Separate jobs in CI logs | Not started | Medium |
-| Training dependency on tests | Future CI workflow graph | Job dependency visible in Actions graph | Not started | Medium |
+| GitHub Actions triggers | `.github/workflows/ci.yml` | Workflow YAML plus local validation output | Implemented locally; GitHub run evidence pending | Medium |
+| Test and training jobs | `.github/workflows/ci.yml` | Separate jobs with `needs: tests` in workflow YAML | Implemented locally; GitHub run evidence pending | Medium |
+| Training dependency on tests | `.github/workflows/ci.yml` | Job dependency visible in workflow YAML | Implemented locally; GitHub run evidence pending | Medium |
 | Performance quality gate | `src/mlops_pipeline/evaluate.py`, `src/mlops_pipeline/train.py`, `configs/train.yaml` | Failing gate raises error and returns non-zero CLI exit code | Complete | Low |
 | Green Actions run | Future CI execution | Successful workflow run screenshot/log | Not started | Medium |
 | Evidently feature drift | `src/mlops_pipeline/monitor_drift.py` (future) | Drift detection output | Not started | Medium |
@@ -26,7 +26,15 @@
 | Configurable drift threshold | `configs/train.yaml` + monitoring module (future) | Threshold in config and test evidence | In progress | Medium |
 | Exit code 1 | `src/mlops_pipeline/monitor_drift.py` (future) | Terminal exit code on threshold breach | Not started | Medium |
 | Written monitoring analysis | Documentation and reports (future) | Analysis section in report/readme | Not started | Medium |
-| README setup and execution instructions | `README.md` | Reproducible setup plus Phase 4 training, experiment, compare, and UI commands | Complete | Low |
+| README setup and execution instructions | `README.md` | Reproducible setup plus Phase 4/5 training, experiment, compare, CI, and UI commands | Complete | Low |
+
+## Phase 5 implementation evidence update
+
+- CI workflow implementation: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs on push, pull request, and manual dispatch.
+- Validation stages: dependency install, version reporting, compileall, pytest, raw-data presence checks, `dvc status`, baseline training, and hygiene checks.
+- DVC choice: `dvc status` is the strongest safe non-destructive check for this repository because the tracked raw dataset is committed locally and there is no `dvc.yaml` pipeline file to dry-run.
+- MLflow isolation: CI and tests use `MLOPS_PIPELINE_MLFLOW_TRACKING_URI` so run data is written outside the repository checkout.
+- Failure behavior: any compile, test, DVC, baseline training, or hygiene failure blocks the pipeline.
 
 ## Dataset audit evidence update
 

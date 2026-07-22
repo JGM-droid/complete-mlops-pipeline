@@ -30,6 +30,12 @@
 - Decision: Rank runs by `f1_attrition` first, then `balanced_accuracy`, `roc_auc`, `precision_attrition`, `recall_attrition`, `accuracy`, run name, and run ID, while excluding failed quality-gate runs from best-run selection.
 - Consequences: Comparison output is deterministic, the primary metric remains explicit, and a run that fails the gate cannot become the promoted candidate.
 
+## ADR-013: Use a two-job GitHub Actions CI workflow with isolated MLflow tracking
+- Status: Accepted
+- Context: Phase 5 needs reproducible CI validation without remote services or repository-local MLflow state leaking into the job output.
+- Decision: Run GitHub Actions with separate test and training jobs, cache pip dependencies, set `MLOPS_PIPELINE_MLFLOW_TRACKING_URI` to a temporary path during CI, and use `dvc status` plus raw-data presence checks as the safe non-destructive DVC validation because the repository has no `dvc.yaml` pipeline file.
+- Consequences: The workflow stays portable, the training job is gated by successful tests, CI output remains isolated from the repository checkout, and DVC validation is aligned with the repository's current tracking layout.
+
 ## ADR-003: Use configuration-driven behavior
 - Status: Accepted
 - Context: Reproducibility and grader transparency require externalized settings.
