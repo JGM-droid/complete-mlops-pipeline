@@ -74,9 +74,11 @@ This section will change as more experiments are completed. A later model may re
 | Training job | Depends on the test job, repeats environment setup, then runs `python -m mlops_pipeline.train --config configs/train.yaml` with isolated MLflow tracking and checks repository hygiene again. |
 | Monitoring job | Depends on the training job, restores the DVC-tracked raw dataset, runs the stable drift check, then runs the deliberate drifted gate check and verifies the nonzero exit without failing the workflow. |
 | Merge blockers | Compile failure, test failure, DVC validation failure, baseline training failure, drift-monitoring gate failure, or unexpected repository mutations. |
-| Remaining unfinished after this phase | Later submission hardening. GitHub-hosted CI evidence is still pending until the workflow runs on Actions. |
+| Remaining unfinished after this phase | Later submission hardening. GitHub-hosted CI evidence is now recorded in successful run `#29960096801`. |
 
 The workflow is intentionally conservative. It validates the repository without requiring remote credentials, uses the committed raw CSV and `.dvc` pointer, and keeps MLflow tracking in the job's temporary filesystem so CI does not depend on repository-local historical runs.
+
+For the written interpretation of Phase 6 drift outcomes and follow-up actions, see [docs/drift_analysis.md](drift_analysis.md).
 
 ## 7. Tests
 
@@ -125,7 +127,7 @@ The workflow is intentionally conservative. It validates the repository without 
 | Phase 2 | Configuration loading, dataset validation, preprocessing, and initial unit tests. | Complete |
 | Phase 3 | Deterministic training, evaluation, model-validation tests, and quality gate. | Complete |
 | Phase 4 | MLflow experiment tracking, controlled experiment runs, and deterministic comparison. | Complete |
-| Phase 5 | CI/CD automation. | Complete locally; GitHub-hosted evidence pending |
-| Phase 6 | Drift monitoring. | Complete locally; GitHub-hosted evidence pending |
+| Phase 5 | CI/CD automation. | Complete; validated in GitHub-hosted run `#29960096801` |
+| Phase 6 | Drift monitoring. | Complete; stable pass and drifted expected gate-failure validated in run `#29960096801` |
 | Phase 7 | Documentation and grader simulation. | Pending |
 | Phase 8 | Final audit and submission. | Pending |

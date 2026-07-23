@@ -15,24 +15,25 @@
 | Three dataset-validation tests | `tests/test_data_validation.py` | Passing pytest output on real dataset plus failure-path checks | Complete | Low |
 | Two model-validation tests | `tests/test_model_validation.py` | Passing pytest output for prediction-shape/value checks and threshold-quality checks | Complete | Low |
 | pytest root command | Project root + `pyproject.toml` | `pytest tests/ -v` execution from root | Complete | Low |
-| GitHub Actions triggers | `.github/workflows/ci.yml` | Workflow YAML plus local validation output | Implemented locally; GitHub run evidence pending | Medium |
-| Test and training jobs | `.github/workflows/ci.yml` | Separate jobs with `needs: tests` in workflow YAML | Implemented locally; GitHub run evidence pending | Medium |
-| Training dependency on tests | `.github/workflows/ci.yml` | Job dependency visible in workflow YAML | Implemented locally; GitHub run evidence pending | Medium |
+| GitHub Actions triggers | `.github/workflows/ci.yml` | Workflow YAML plus successful GitHub-hosted run `#29960096801` | Complete | Low |
+| Test and training jobs | `.github/workflows/ci.yml` | Separate jobs with `needs: tests` in workflow YAML and successful run `#29960096801` | Complete | Low |
+| Training dependency on tests | `.github/workflows/ci.yml` | Job dependency visible in workflow YAML and successful run `#29960096801` | Complete | Low |
 | Performance quality gate | `src/mlops_pipeline/evaluate.py`, `src/mlops_pipeline/train.py`, `configs/train.yaml` | Failing gate raises error and returns non-zero CLI exit code | Complete | Low |
-| Green Actions run | Future CI execution | Successful workflow run screenshot/log | Not started | Medium |
-| Evidently feature drift | `src/mlops_pipeline/drift_batches.py`, `src/mlops_pipeline/monitor_drift.py` | Deterministic drift batches plus Evidently comparison output | Complete locally | Low |
-| Drift summary | `reports/drift_summary.json` | Drift summary JSON with reference/current paths, drift counts, drift percentage, drift names, threshold, gate status, and Evidently version | Complete locally | Low |
-| HTML report | `reports/drift_report.html` | Drift HTML report | Complete locally | Low |
-| Configurable drift threshold | `configs/train.yaml`, `src/mlops_pipeline/config.py` | `monitoring.dataset_drift_threshold` and `monitoring.feature_drift_threshold` are validated and exercised in tests | Complete locally | Low |
-| Exit code 1 | `src/mlops_pipeline/monitor_drift.py` | Terminal exit code on threshold breach | Complete locally | Low |
-| Written monitoring analysis | `README.md`, `docs/project_walkthrough.md`, `docs/decision_log.md` | Phase 6 analysis and interview talking points | Complete locally | Low |
-| Deterministic monitoring batches | `src/mlops_pipeline/drift_batches.py` | Stable and drifted batches generated from the canonical raw CSV with identical seed-dependent output | Complete locally | Low |
-| Monitoring CLI | `src/mlops_pipeline/monitor_drift.py` | `python -m mlops_pipeline.monitor_drift --config configs/train.yaml --current-batch stable|drifted` | Complete locally | Low |
+| Green Actions run | `.github/workflows/ci.yml` | Successful GitHub-hosted workflow run `#29960096801` | Complete | Low |
+| Evidently feature drift | `src/mlops_pipeline/drift_batches.py`, `src/mlops_pipeline/monitor_drift.py` | Deterministic drift batches plus Evidently comparison output; hosted validation in run `#29960096801` | Complete | Low |
+| Drift summary | `reports/drift_summary.json` | Drift summary JSON with reference/current paths, drift counts, drift percentage, drift names, threshold, gate status, and Evidently version | Complete | Low |
+| HTML report | `reports/drift_report.html` | Drift HTML report | Complete | Low |
+| Configurable drift threshold | `configs/train.yaml`, `src/mlops_pipeline/config.py` | `monitoring.dataset_drift_threshold` and `monitoring.feature_drift_threshold` are validated and exercised in tests | Complete | Low |
+| Exit code 1 | `src/mlops_pipeline/monitor_drift.py` | Terminal exit code on threshold breach with hosted validation in run `#29960096801` | Complete | Low |
+| Written monitoring analysis | `docs/drift_analysis.md`, `README.md`, `docs/project_walkthrough.md`, `docs/decision_log.md` | Phase 6 analysis and interview talking points | Complete | Low |
+| Deterministic monitoring batches | `src/mlops_pipeline/drift_batches.py` | Stable and drifted batches generated from the canonical raw CSV with identical seed-dependent output | Complete | Low |
+| Monitoring CLI | `src/mlops_pipeline/monitor_drift.py` | `python -m mlops_pipeline.monitor_drift --config configs/train.yaml --current-batch stable|drifted` | Complete | Low |
 | README setup and execution instructions | `README.md` | Reproducible setup plus Phase 4/5 training, experiment, compare, CI, and UI commands | Complete | Low |
 
 ## Phase 5 implementation evidence update
 
 - CI workflow implementation: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs on push, pull request, and manual dispatch.
+- GitHub-hosted evidence: run `#29960096801` completed successfully.
 - Validation stages: dependency install, version reporting, compileall, pytest, raw-data presence checks, `dvc status`, baseline training, and hygiene checks.
 - DVC choice: `dvc status` is the strongest safe non-destructive check for this repository because the tracked raw dataset is committed locally and there is no `dvc.yaml` pipeline file to dry-run.
 - MLflow isolation: CI and tests use `MLOPS_PIPELINE_MLFLOW_TRACKING_URI` so run data is written outside the repository checkout.
@@ -44,6 +45,7 @@
 - Drift monitoring implementation: `src/mlops_pipeline/monitor_drift.py` uses Evidently 0.7.21 with `Report`, `DataDriftPreset`, `DataDefinition`, and `Dataset.from_pandas` to compare current versus reference batches.
 - Output artifacts: `reports/drift_summary.json` and `reports/drift_report.html` are generated deterministically along with the three CSV batch files.
 - Configurable gate: `configs/train.yaml` defines the random seed, batch sizes, drift threshold, drifted feature names, per-feature drift settings, and output paths.
+- GitHub-hosted evidence: run `#29960096801` validated stable-batch pass behavior and drifted-batch expected gate-failure behavior.
 - Test evidence:
 	- `pytest tests/test_drift_monitoring.py -v` passed.
 	- `pytest tests/ -v` passed after the Phase 6 changes.

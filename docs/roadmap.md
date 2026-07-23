@@ -40,13 +40,13 @@ Phase 1 dataset-audit sub-status:
 - Purpose: Implement automated quality and training workflow controls.
 - Principal deliverables: GitHub Actions triggers, separate test and training jobs, explicit dependency between jobs.
 - Acceptance checks: Complete locally. The workflow runs on pushes to `main`, pull requests targeting `main`, and manual dispatch; it installs dependencies, validates compilation and tests, runs the baseline training command, performs non-destructive DVC checks, and verifies repository hygiene.
-- Current status: Complete locally; GitHub-hosted run evidence still pending.
+- Current status: Complete. GitHub-hosted run `#29960096801` completed successfully, including tests and DVC validation, baseline training gate, and monitoring-gate validation.
 
 ## Phase 6: Drift monitoring
 - Purpose: Implement deterministic data drift monitoring for production data.
 - Principal deliverables: Drift summary JSON, HTML report, configurable threshold, deterministic failure behavior.
 - Acceptance checks: Monitoring exits with status code 1 on configured drift breach.
-- Current status: Complete locally; GitHub-hosted evidence pending.
+- Current status: Complete. GitHub-hosted run `#29960096801` validated stable-batch pass behavior and drifted-batch expected gate-failure behavior.
 
 ## Phase 7: Documentation and grader simulation
 - Purpose: Finalize operator-facing and grader-facing execution guidance.
